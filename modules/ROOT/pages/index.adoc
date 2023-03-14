@@ -1,5 +1,230 @@
-= Antora-Sample
+:icons: font
+:experimental:
 
-== Inhalt
+= n-doc: Creating CC Documentation with LaTeX
+
+n-doc is a platform for creating Common Criteria documentation. This repository
+is the official distribution of n-doc. It contains sample documents, LaTeX
+macros, Lua programs and everything else you need to write your own developer
+documentation. The documents here are the developer documentation for "Mauve VPN
+Client", a fictional TOE serving as a template for the n-doc process. Follow the
+links to see the resulting PDFs!
+
+* link:https://mauvecorp.com/assets/ase.pdf[Security Target] (ASE)
+* link:https://mauvecorp.com/assets/adv_fsp.pdf[Functional Specification] (ADV_FSP)
+* link:https://mauvecorp.com/assets/adv_tds.pdf[TOE Design Specification] (ADV_TDS)
+* link:https://mauvecorp.com/assets/ate_cov.pdf[Test Coverage] (ATE_COV)
+* link:https://mauvecorp.com/assets/adv_arc.pdf[Security Architecture] (ADV_ARC)
+* link:https://mauvecorp.com/assets/alc.pdf[Life Cycle] (ALC)
+* link:https://mauvecorp.com/assets/reflist.pdf[Reference List] (Reflist)
+* link:https://mauvecorp.com/assets/mauvecorp_vpn_client.db[TOE database file]
+
+Those documents provide an outline that can be used when adapting the sample
+documents for your own purposes. Especially ASE, ADV_FSP and ADV_TDS contain
+enough text to show the interaction between documents and database. Clone the
+repository, build the documents and start changing them for your own TOE!
+
+In 2021 the link:https://www.ccusersforum.org[Common Criteria Users Forum] has
+invited us to present n-doc at the 20th CCUF Workshop
+(see link:https://github.com/n-design/n-doc/files/8854636/CCUF_presentation_n-doc_AlexanderKrumeich.pdf[presentation
+slides] and link:https://www.youtube.com/watch?v=ltZikycGoAs[recording]).
 
 
+== Compiling the documents
+
+Call `./runmake.sh` to build the documents. Result documents are copied
+  to the directory `deliverables`.
+
+`runmake.sh` starts a
+link:https://hub.docker.com/repository/docker/ndesign/n-doc[ndesign/n-doc]
+container. This container contains all the tools necessary for building the
+documents. There is no need to install any software on your computer. The
+current directory that contains the repository is mounted into the container:
+
+----
+docker run --rm  --volume $(pwd):/data ndesign/n-doc make -j4 delivery
+----
+
+Use a specific document type instead of `delivery` to build only a single
+document (`ase`, `adv_tds` etc, see below) . The result document will be in the
+subdirectory with the same name.
+
+The optional parameter `-j` controls the number of threads  (jobs) that GNU Make
+starts in parallel. Use the number of cores of your CPU. The more, the faster.
+
+NOTE: Without a number after `-j` GNU Make uses all available resources of
+the host system. This might lead to a complete standstill.
+
+
+== Working on the docments / Structure of the repository
+
+Each document has its own subdirectory. The subdirectories have the
+same name as the document type: `ase`, `adv_tds` etc. All files that are
+specific to that document type reside in that directory. Elements shared between
+documents are in the `common` directory. Lua programs are in `lua`. The
+`engine` subdirectory contains the resources needed to create the Docker image
+containing TeX Live and all other tools. See the separate documentation in
+link:engine/README.adoc[engine/README.adoc] for details.
+
+The documents are usually modularized. There is a main document that includes
+the other parts during compile time. This main document must have the same name
+as the directory it resides in, e.g. `adv_tds/adv_tds.tex`.
+
+To _add_ a document use the script `scripts/add_document.sh` and provide the type
+of the new document as an argument on the command line,
+e.g.
+
+----
+scripts/add_document.sh ate_fun
+----
+
+This generates an empty (but compileable) document from a template.
+
+To _remove_ a document use the script `scripts/remove_document.sh` and provide
+the type of the document as an argument on the command line, e.g.:
+
+----
+scripts/remove_document.sh ate_fun`
+----
+
+== Build-Management
+
+The goal is to automate both the generation of PDF documents and the release
+management as far as possible. A combination of tools is used for that:
+link:http://personal.psu.edu/jcc8/software/latexmk-jcc/[`latexmk`],
+link:https://www.gnu.org/software/make/[`make`] and an assortment of shell
+scripts.
+
+`latexmk` is used at the level of individual documents. To build several
+documents at once, `latexmk` is combined with `make`.
+
+The following goals are availavble at the root level `Makefile`:
+
+[cols="1,4", options="header"]
+|===
+| Goal      | Purpose
+
+| `all`      | Creates all PDF-documents and the DB file in their respective directories
+
+| `delivery` | Creates all PDF-documents and copies them to the directory `deliverables`. Documents are renamed so that they have their version number in the name.
+
+| `ase`  | Creates the Security Target 
+
+| `fsp` | Creates the  Funktional Specification (`adv_fsp`)
+
+| `tds` | Creates the  Design Specification (`adv_tds`)
+
+| `arc` | Creates the  Security Architecture (`adv_arc`)
+
+| `ate` | Creates the  Test Coverage (`ate_cov`) 
+
+| `ref` | Creates the  List of References (`reflist`)
+
+| `clean` | Removes all documents and auxiliary files
+
+| `mwe` | Creates the "minimal working examples" (`mwe_*`) and their `_body` files.
+
+| `cleanmwe` | Removes all documents and auxiliary files for the minimal working examples
+
+|===
+
+The following shell scripts support the build management:
+
+[cols="1,4", options="header"]
+|===
+| Script | Purpose
+
+| `scripts/add_document.sh` | Adds a new document to the repository. The new
+document is created from the template in the `scripts/_skeleton` directory. The
+script also adds the new document to the Makefile, so it will be included in
+future builds.
+
+| `scripts/remove_document.sh` | Removes a document from the repository. The
+  directory is deleted and the document removed from the Makefile.
+
+| `scripts/release_documents.sh` | Creates a document release. Raises the version number and tags the repository.
+
+| `scripts/renamereleases.sh` | _Not to be called by the user._ Adds the version number to the file name. Is called from the  `Makefile`.
+
+| `scripts/create_release_archive.sh` | _Not to be called by the user._ Creates an archive with the documents in `deliverables`. Is called from the `Makefile`.
+
+|===
+
+
+== Collaborating with Others
+
+=== Branching
+
+All the work is done in feature branches. No direct pushes to the `main` branch
+are accepted. Feature branches are spun off the `main` branch. Their names
+should reflect the purpose, e.g. a ticket number or a short description such as
+`fix-st-todos`. Sometimes it is helpful to prefix branch names with the editor's
+name.
+
+When a feature description is complete and the branch is pushed to the upstream
+repository, the editor creates a pull request (Depending on the git server used
+in the project, this is called either a _merge request_ or a _pull
+request_. These terms mean the same thing.) The pull request is assigned to the
+coordinating editor. They can review the changes and merge the changeset into
+the `main` branch. To facilitate a clean repository structure, it is recommended
+to _rebase_ the feature branch before accepting the pull request. This can be
+done either by using `git rebase` or `git pull --rebase`. Both are acceptable
+and it is a matter of personal taste which one is used.
+
+=== Patch Workflow
+
+Not all editors have access to the central git servers that host this document
+repository. For external editors, who cannot directly push their changes to the
+upstream repo, there is a patch workflow that is implemented by shell scripts.
+
+Instead of pushing a branch and submitting a pull request, the external editor
+creates a patch file that incorporates all commits of their feature branch. This
+patch file is sent to the coordinating editor who will recreate the feature
+branch by applying the patch file. They then create the pull request themselves.
+
+To create a patch file, call `scripts/create-patch.sh` with the feature branch
+ checked out. The script accepts a single optional argument `-f` or `--file`
+ followed by a file name. If no file name is given, the script will use the
+ branch name to derive a file name. In the patch file, every commit of the
+ feature branch since the spin off from `main` has its own patch.
+
+To process a patch file, call `scripts/process-patch.sh`. This script requires
+the name of a patch file. With no other arguments, the script checks whether the
+patch file can be applied to the `main` branch. It will also print the names of
+the files that are modified by each commit in the patch file.
+
+If called with `-a` (or `--apply`) the patch file is not only verified, but also
+applied to the repository. A feature branch is created, the script derives the
+branch name from the name of the patch file. The script can optionally be called
+with the `-b` switch followed by a branch name.
+
+It makes no sense to check commit the patch files. Files with the extension
+`*.patch` are ignored in the `.gitignore` file.
+
+
+== Release Management
+
+Creating releases is described in a link:documentation/creating-releases.adoc[separate document].
+
+== Minimal Working Examples
+
+The directories `mwe_tds`, `mwe_st`, `mwe_fsp` and `mwe_arc` contain
+documents that serve as __Minimal Working Examples__ (MWE, as is common at
+link:https://tex.stackexchange.com/[TeX Stackexchange]). They provide the same
+macros as their "bigger" counterparts and serve as test environments for
+reproducing bugs or developing smaller chapters that are quicker to compile than
+the ADV documents themselves. The main documents `mwe_tds/mwe_tds.tex`,
+`mwe_st/mwe_st.tex` and `mwe_fsp/mwe_fsp.tex` should not be
+modified. Instead, create a file `mwe_<documenttype>_body.tex` that can be
+freely edited. This `_body` file is ignored by git so that there are no merge
+conflicts that result from experiments. The make goal `make mwe` creates
+`_body` files for all MWE-types.
+
+== Command Line Completion
+
+n-doc provides command line completion if you use GNU bash as your shell. Add
+----
+source <path-to-repo>/config/n-doc_bash_completions.sh
+----
+
+to your `~/.bashrc` or `~/.bash_profile`.
