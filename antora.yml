@@ -1,0 +1,4 @@
+name: mainpage
+title: n-doc
+version: '0.1'
+start_page: ROOT:index.adoc
