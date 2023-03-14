@@ -1,4 +1,5 @@
-name: mainpage
+name: n-doc
 title: n-doc
-version: '0.1'
+version: 1.0
+display_version: n-doc
 start_page: ROOT:index.adoc
